@@ -1782,6 +1782,34 @@ const conPos = () => cuentasActivas().filter(c => ctaR(c.id).posiciones.length).
 const opsPos = (id, extra) => { const c = ctaR(id), ops = c ? c.posiciones.map(p => ({ value: p.activo, label: `${p.activo} · tienes ${qty(p.q)}` })) : [];
   return extra && !ops.some(o => o.value === extra) ? ops.concat([{ value: extra, label: extra }]) : ops; };
 
+/* ---------------------------------------------- verificación de precio automático */
+const VER = { clave: "", estado: "", res: null, timer: null };
+const FUENTE_TXT = { yahoo: "Yahoo Finance", coingecko: "CoinGecko" };
+function verificar(ticker, clase, idPrecio, alTerminar) {
+  const t = U.up(ticker), clave = t + "|" + (clase || "") + "|" + (idPrecio || "");
+  clearTimeout(VER.timer);
+  if (!t) { VER.clave = ""; VER.estado = ""; VER.res = null; return; }
+  if (VER.clave === clave && VER.estado) return;
+  VER.clave = clave; VER.estado = "buscando"; VER.res = null;
+  VER.timer = setTimeout(async () => {
+    try {
+      const out = await server({ action: "verificarActivo", row: { ticker: t, clase, idPrecio } });
+      if (VER.clave !== clave) return;
+      VER.res = out.info || { ok: false }; VER.estado = VER.res.ok ? "ok" : "no";
+    } catch (e) { if (VER.clave !== clave) return; VER.res = { ok: false, mensaje: conPista(e.message) }; VER.estado = "no"; }
+    if (alTerminar) alTerminar(VER.res);
+    actualizaForm();
+  }, 650);
+}
+function lineaVerificacion(t) {
+  if (!VER.estado || !VER.clave.startsWith(U.up(t) + "|")) return "";
+  if (VER.estado === "buscando") return `<span class="muted">Buscando el precio de ${esc(U.up(t))}…</span>`;
+  const r = VER.res || {};
+  if (VER.estado === "ok") return `<span class="pos">✓ Encontrado en ${esc(FUENTE_TXT[r.fuente] || r.fuente)}</span>${r.nombre && r.nombre !== r.idPrecio ? ": " + esc(r.nombre) : ""} · <b>${precio(r.precio)}</b> hoy. Se actualizará solo.` +
+    (r.mensaje ? `<br><span class="muted">${esc(r.mensaje)}</span>` : "");
+  return `<span class="neg">✗ ${esc(r.mensaje || "No encontré precio automático.")}</span><br><span class="muted">Puedes guardarlo igual: quedará con precio a mano. Revisa que el símbolo esté bien escrito.</span>`;
+}
+
 function formMovimiento(tipo, pre = {}, t = null) {
   if (!CARGADO) return toast("Espera a que carguen tus datos.");
   const edit = !!t, info = TX[tipo] || TX.ajuste;
@@ -1852,12 +1880,25 @@ function formMovimiento(tipo, pre = {}, t = null) {
           visible: v => !!v.activo && !R.catalogo[U.up(v.activo)] },
         nota];
       if (!v0.clase) v0.clase = "accion";
-      alCambiar = (k, v) => { if (k === "activo" && (META.criptoIds || {})[U.up(v.activo)]) setCampo("clase", "cripto"); };
+      const esNuevo = a => !!U.up(a) && !R.catalogo[U.up(a)] && !DATA.Activos.some(x => U.up(x.ticker) === U.up(a));
+      VER.clave = ""; VER.estado = ""; VER.res = null;
+      alCambiar = (k, v) => {
+        if (k === "activo" && (META.criptoIds || {})[U.up(v.activo)]) setCampo("clase", "cripto");
+        if ((k === "activo" || k === "clase") && !edit) {
+          const cl = leeForm().clase;
+          if (esNuevo(v.activo)) verificar(v.activo, cl === "cripto" ? "cripto" : "", "", r => {
+            const ahora = leeForm().clase;
+            if (r && r.ok && r.clase === "cripto" && ahora !== "cripto") setCampo("clase", "cripto");
+          });
+          else { clearTimeout(VER.timer); VER.clave = ""; VER.estado = ""; }
+        }
+      };
       preview = v => {
-        if (!(v.monto > 0) || !(v.cantidad > 0)) return "";
+        const ver = esNuevo(v.activo) && !edit ? lineaVerificacion(v.activo) : "";
+        if (!(v.monto > 0) || !(v.cantidad > 0)) return ver;
         const a = U.up(v.activo), p = posDe(v.cuenta, a), nuevoCosto = ((p ? p.c : 0) + C(v.monto)) / ((p ? p.q : 0) + v.cantidad) / 100;
         const c = ctaR(v.cuenta), falta = c && c.efectivo - C(v.monto) < 0;
-        return `Precio por unidad: <b>${precio(v.monto / v.cantidad)}</b>` + (p ? `<br>Tu costo promedio de ${esc(a)} queda en ${precio(nuevoCosto)}` : "") +
+        return (ver ? ver + "<br>" : "") + `Precio por unidad: <b>${precio(v.monto / v.cantidad)}</b>` + (p ? `<br>Tu costo promedio de ${esc(a)} queda en ${precio(nuevoCosto)}` : "") +
           "<br>" + saldoTxt(v.cuenta, -C(v.monto)) + (falta ? `<br><span class="neg">Registra primero la transferencia o el capital que entró para esta compra.</span>` : "");
       };
       break;
@@ -1947,13 +1988,19 @@ function formMovimiento(tipo, pre = {}, t = null) {
     },
     guardar: async v => {
       const row = armaRow(tipo, v, t);
-      const ops = [];
+      const ops = []; let nuevoVerificado = null;
       if (tipo === "compra" && !R.catalogo[row.activo] && !DATA.Activos.some(a => U.up(a.ticker) === row.activo)) {
         const cg = (META.criptoIds || {})[row.activo] || "";
-        ops.push({ op: "add", sheet: "Activos", row: { ticker: row.activo, nombre: row.activo, clase: v.clase || (cg ? "cripto" : "accion"), fuente: "auto", idPrecio: cg || row.activo } });
+        const vr = VER.estado === "ok" && VER.clave.startsWith(row.activo + "|") ? VER.res : null;
+        const sinPrecio = VER.estado === "no" && VER.clave.startsWith(row.activo + "|");
+        ops.push({ op: "add", sheet: "Activos", row: { ticker: row.activo, nombre: vr && vr.nombre && vr.nombre !== vr.idPrecio ? vr.nombre : row.activo,
+          clase: vr && vr.clase === "cripto" ? "cripto" : (v.clase || (cg ? "cripto" : "accion")),
+          fuente: sinPrecio ? "manual" : "auto", idPrecio: vr ? vr.idPrecio : (cg || row.activo) } });
+        nuevoVerificado = vr;
       }
       ops.push({ op: edit ? "update" : "add", sheet: "Transacciones", row });
       await api(ops.length === 1 ? { action: ops[0].op, sheet: "Transacciones", row } : { action: "lote", ops });
+      if (nuevoVerificado) { try { await api({ action: "verificarActivo", row: { ticker: row.activo, clase: nuevoVerificado.clase, idPrecio: nuevoVerificado.idPrecio, guardar: true } }); } catch (e) {} }
       if (!edit && row.cuenta) lsSet("finanzas_ult_" + tipo, row.cuenta);
       return edit ? "Cambios guardados" : (TX[tipo][0] + " registrado" + (tipo === "venta" || tipo === "compra" ? "a" : ""));
     },
@@ -2072,9 +2119,19 @@ function formActivo(a) {
     valores: cat ? { ...cat, idPrecio: cat.idPrecio || (cat.clase === "cripto" ? cg : a) } : { nombre: a, clase: cg ? "cripto" : "accion", fuente: "auto", idPrecio: cg || a },
     alCambiar: (k, v) => { if (k === "fuente" && v.fuente === "auto" && !v.idPrecio) setCampo("idPrecio", v.clase === "cripto" ? ((META.criptoIds || {})[a] || "") : a); },
     validar: v => v.fuente === "auto" && !v.idPrecio ? "Para precio automático falta el identificador." : "",
+    preview: v => v.fuente === "auto" ? "Al guardar compruebo que el precio automático funcione." : "",
     guardar: async v => {
-      const row = { ticker: a, nombre: v.nombre || a, clase: v.clase, fuente: v.fuente, idPrecio: v.fuente === "auto" ? v.idPrecio.toLowerCase() : "", nota: v.nota };
-      await api({ action: cat ? "update" : "add", sheet: "Activos", row }); return "Activo guardado";
+      let idp = v.fuente === "auto" ? v.idPrecio.trim() : "", clase = v.clase, extra = "";
+      if (v.fuente === "auto") {
+        $("#fPreview").innerHTML = `<span class="muted">Comprobando el precio de ${esc(a)}…</span>`;
+        const out = await server({ action: "verificarActivo", row: { ticker: a, clase, idPrecio: idp, guardar: true } });
+        const r = out.info || {};
+        if (!r.ok) throw new Error((r.mensaje || "No encontré precio automático.") + " Revisa el identificador o elige “A mano”.");
+        idp = r.idPrecio; if (r.clase === "cripto") clase = "cripto";
+        extra = ` · ${precio(r.precio)} desde ${FUENTE_TXT[r.fuente] || r.fuente}`;
+      }
+      const row = { ticker: a, nombre: v.nombre || a, clase, fuente: v.fuente, idPrecio: clase === "cripto" ? idp.toLowerCase() : idp.toUpperCase(), nota: v.nota };
+      await api({ action: cat ? "update" : "add", sheet: "Activos", row }); return "Activo guardado" + extra;
     }
   });
 }
