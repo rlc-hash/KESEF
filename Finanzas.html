@@ -2159,6 +2159,7 @@ async function actualizarPrecios() {
     const fxT = r.dolar ? ` · dólar ${precio(r.dolar)}` : "";
     if (!a && !sp.length) toast((r.manuales || []).length ? "Tus activos están en precio manual; cámbialos a automático en Editar." + fxT : "No hay nada que actualizar." + fxT);
     else toast(`${a} ${a === 1 ? "precio actualizado" : "precios actualizados"}` + fxT + (sp.length ? ` · sin precio: ${sp.join(", ")}` : ""), !!sp.length && !a, sp.length ? 6000 : 2800);
+    if ((r.errores || []).length) setTimeout(() => toast("Aviso: " + r.errores.join(" · "), true, 12000), sp.length ? 3500 : 2900);
   } catch (e) { toast(conPista(e.message), true); }
   finally { PRECIOS_OCUPADO = false; bs.forEach(b => { b.disabled = false; b.classList.remove("girando"); }); }
 }
@@ -2283,7 +2284,7 @@ function abrirAjustes(msg) {
     : `<div class="estado-l"><span class="ico no">!</span><span>Solo cuando tocas Precios.</span></div>
        <p class="nota" style="margin-top:6px">Para que sea diario: en el Sheets, menú <b>Finanzas → Activar actualización diaria</b>.</p>`;
   $("#cfgCg").value = "";
-  $("#cfgCgInfo").textContent = m.tieneClaveCoingecko ? "Hay una clave guardada. Escribe otra para cambiarla, o un guion (-) para quitarla." : "Gratis en coingecko.com/en/api, plan Demo. Solo hace falta si ves avisos de límite.";
+  $("#cfgCgInfo").textContent = m.tieneClaveCoingecko ? `Hay una clave guardada${m.clavePista ? " (" + m.clavePista + ")" : ""}. Escribe otra para cambiarla, o un guion (-) para quitarla.` : "Gratis en coingecko.com/en/api, plan Demo. Solo hace falta si ves avisos de límite.";
   $("#cfgPct").value = String(Math.round(pctMaazer() * 1000) / 10);
   const arch = DATA.Cuentas.filter(archivada);
   $("#cfgArchBox").hidden = !arch.length;
@@ -2322,7 +2323,7 @@ $("#cfgOk").addEventListener("click", async () => {
     if (web && !API_URL) throw new Error("Primero conecta el Sheets.");
     const cambios = [];
     if (Math.abs(pctV / 100 - pctMaazer()) > 1e-9) cambios.push({ clave: "maazerPct", valor: pctV / 100 });
-    if (cg) cambios.push({ clave: "coingeckoKey", valor: cg === "-" ? "" : cg });
+    if (cg) { const k = (cg.match(/CG-[A-Za-z0-9]+/) || [cg.replace(/\s+/g, "")])[0]; cambios.push({ clave: "coingeckoKey", valor: cg === "-" ? "" : k }); }
     for (const c of cambios) await api({ action: "setParam", row: c });
     cerrar($("#cfgDlg")); toast(cambios.length ? "Ajustes guardados" : "Listo");
   } catch (e) { $("#cfgErr").textContent = conPista(e.message); }
