@@ -5,6 +5,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#000000">
+<link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -303,6 +304,19 @@ button.banner{width:100%;text-align:left;cursor:pointer;font:inherit;color:inher
 .aviso-mig h3{margin:0 0 6px;font-size:15px}
 .aviso-mig p{margin:6px 0}
 .aviso-mig ul{margin:6px 0 0;padding-left:18px}
+
+/* ===== ocultar cantidades ===== */
+#btnOjo .ojo-no{display:none} body.oculto #btnOjo .ojo-si{display:none} body.oculto #btnOjo .ojo-no{display:block}
+body.oculto #btnOjo{color:var(--ink);border-color:var(--faint)}
+body.oculto main .num, body.oculto main .v, body.oculto main .big, body.oculto main .delta,
+body.oculto main .row .r, body.oculto main .sal, body.oculto main .sal2, body.oculto main .pv,
+body.oculto main .resumen-fil b, body.oculto main .dia-sep span:last-child, body.oculto main .cat .fila .v,
+body.oculto main .grupo-h .num, body.oculto main .s.num, body.oculto main .lbl.up, body.oculto main .lbl.down,
+body.oculto main .kpi .s, body.oculto main .big-total .s, body.oculto main #rPreciosInfo,
+body.oculto #detDlg .det-big, body.oculto #detDlg .lbl-s, body.oculto #detDlg .info-grid dd, body.oculto #detDlg .row .r,
+body.oculto #regDlg .num { filter: blur(9px); user-select:none }
+body.oculto main svg text { opacity:0 }
+body.oculto main .chart svg, body.oculto main .card svg, body.oculto main .dist svg { filter: blur(3px) }
 </style>
 </head>
 <body>
@@ -311,6 +325,10 @@ button.banner{width:100%;text-align:left;cursor:pointer;font:inherit;color:inher
   <div class="bar">
     <span class="brand"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAIAAACyr5FlAAADJ0lEQVR42u3cMW4TQRSAYcfyFaCmRklDScEBuASXoOEENLlELsEBkKCkQeI8FJYQ2qwT2zszeW/e93cgE4zn4+2Od+2b129ud9Jaey+B4BAcgkNwCA7BITgEh+AQHBIcgkNwCA7BITgEh+AQHIJDgkNwCA7BITgEh+AQHIJDcEhwCA7BITgEh+AQHIJDcAgOwSHBofM7eAnS9eHb58e/+f3jffO/6MYX42dn0Y8IHJOw6EHEOcdsMq54PBxVZDT0AceEMlr5gENwFBsbTX4CHIKj3tjY/nPgEByCQ3AIDsGhRV8efkd4Gq7KxmXx49XD9h+45QqtyWFgmBw5WWwcHhtv7DA5DAyTIy2Lq4fH9vvB4EgwJK7w0eROQThyHDsu8tHqHlIfTchxVnFcb3efk7Hs66e7/3857HMrJkfoFiz6ObCVTTY2VmWMzORIMzDGZ3KQYXJgYXJMtk+Bg4yIYwMOMwOO8DICjg04yLBbsT2BI9HYCM7CYYUMOMiAgww4yIBDcBgbcJBxl/EfCAcZcJABBxlwJJBht6Jpx8Zuggtvi//KXZekzgHlWOJPvD2xVD3WppqMxIeVp5eq+ZlBQRlZcZyzVA191JQx+QlpEx9lZaQ8Ib1oyf89eL6VMzlakrpikFQeG/l2K63OJM5Zy+IyMuHo9NbkqXUlIw2O3m9aLxaYjDQ4wl7OmP4k94CF8u1WgsuosDfek0FGmsNK/ENJnffTDhPIWF2twVtfu5VwMp5dqrZEqr0Hf5hsYJx6jI1PShz9ZFCSG8f478E5/nFEQp9zjBkYDZ9GwYv++8oydu7ziDY5An6l2rNPqaahoTjiDIyLnlvZ6TIOR2QZp55k8YPOIBwzfTunrWytgaEX2K2Q4bDSzAcWhSbHRetNRjkcZDiseBfB5Gg9GMiAY90BGcF7mUv2WJgc6ybIcEIqk0NwCA4JDsEhOASH4BAcgkNpG3Th7e27917rHv359dPkkMOK4BAcyp37OWRyCA7BITgEh+AQHIJDcAgOCQ7BITgEh+AQHIJDcAgOwSHBITgEh+AQHIJDcAgOwSE4JDgEh+AQHBrSXzTUJgeQd5YjAAAAAElFTkSuQmCC" alt="">Finanzas</span>
     <span class="estado"><span class="dot load" id="dot"></span><span id="estado">cargando</span></span>
+    <button class="icon-btn" id="btnOjo" title="Ocultar cantidades" aria-label="Ocultar cantidades" aria-pressed="false">
+      <svg class="ojo-si" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+      <svg class="ojo-no" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 19c-6.5 0-10-7-10-7a18.5 18.5 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c6.5 0 10 7 10 7a18.5 18.5 0 0 1-2.16 3.19"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>
+    </button>
     <button class="icon-btn" id="btnRefresh" title="Volver a cargar" aria-label="Volver a cargar">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
     </button>
@@ -530,8 +548,8 @@ button.banner{width:100%;text-align:left;cursor:pointer;font:inherit;color:inher
         <h4>Precios automáticos</h4>
         <div id="ajDiario"></div>
         <p class="nota" style="margin-top:8px">¿Tu gráfica se ve plana antes de hoy? <button class="link" data-accion="historial">Traer historial de precios de tus criptos</button></p>
-        <label class="field"><span>Clave Demo de CoinGecko (opcional)</span>
-          <input type="password" id="cfgCg" autocomplete="off" placeholder="Solo si CoinGecko te está limitando">
+        <label class="field"><span>Clave Demo de CoinGecko</span>
+          <input type="password" id="cfgCg" autocomplete="off" placeholder="CG-…">
           <small id="cfgCgInfo"></small></label>
       </div>
       <div class="aj-sec">
@@ -2341,7 +2359,7 @@ function abrirAjustes(msg) {
     : `<div class="estado-l"><span class="ico no">!</span><span>Solo cuando tocas Precios.</span></div>
        <p class="nota" style="margin-top:6px">Para que sea diario: en el Sheets, menú <b>Finanzas → Activar actualización diaria</b>.</p>`;
   $("#cfgCg").value = "";
-  $("#cfgCgInfo").textContent = m.tieneClaveCoingecko ? `Hay una clave guardada${m.clavePista ? " (" + m.clavePista + ")" : ""}. Escribe otra para cambiarla, o un guion (-) para quitarla.` : "Gratis en coingecko.com/en/api, plan Demo. Solo hace falta si ves avisos de límite.";
+  $("#cfgCgInfo").textContent = m.tieneClaveCoingecko ? `Hay una clave guardada${m.clavePista ? " (" + m.clavePista + ")" : ""}. Escribe otra para cambiarla, o un guion (-) para quitarla.` : "Necesaria para los precios de tus criptos. Gratis en coingecko.com, plan Demo.";
   $("#cfgPct").value = String(Math.round(pctMaazer() * 1000) / 10);
   const arch = DATA.Cuentas.filter(archivada);
   $("#cfgArchBox").hidden = !arch.length;
@@ -2387,6 +2405,16 @@ $("#cfgOk").addEventListener("click", async () => {
   finally { btn.disabled = false; btn.textContent = "Guardar"; }
 });
 
+
+/* ------------------------------------------------------ ocultar cantidades */
+const LS_OCULTO = "finanzas_oculto";
+function ponOculto(on) {
+  document.body.classList.toggle("oculto", on);
+  const b = $("#btnOjo"); b.setAttribute("aria-pressed", String(on));
+  b.title = b.ariaLabel = on ? "Mostrar cantidades" : "Ocultar cantidades";
+}
+ponOculto(lsGet(LS_OCULTO) === "1");
+$("#btnOjo").addEventListener("click", () => { const on = !document.body.classList.contains("oculto"); lsSet(LS_OCULTO, on ? "1" : ""); ponOculto(on); });
 /* ---------------------------------------------------------- arranque */
 let CARGANDO = false;
 async function cargar(modo) {
@@ -2411,6 +2439,10 @@ document.addEventListener("visibilitychange", () => {
 });
 setInterval(() => { if (CARGADO && UI.tab === "resumen") renderResumen(); }, 60000);
 
+try {
+  if ("serviceWorker" in navigator && location.protocol === "https:" && !/googleusercontent|script\.google/.test(location.hostname))
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+} catch (e) {}
 if (document.readyState === "complete") setTimeout(cargar, 0);
 else window.addEventListener("load", () => cargar());
 
