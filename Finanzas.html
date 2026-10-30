@@ -1027,7 +1027,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Motor;
    Si la publicas en Netlify o la abres como archivo, puedes pegar aquí tu URL
    /exec para no configurarla en cada dispositivo. En Apps Script no hace falta.
    ========================================================================== */
-const APP_VERSION = "2026.10.30-2";
+const APP_VERSION = "2026.10.30-3";
 const API_URL_FIJA = "";
 const LS_URL = "finanzas_api_url", LS_CLAVE = "finanzas_clave", LS_RANGO = "finanzas_rango", LS_VISTO = "finanzas_v4_visto";
 const TIMEOUT_MS = 60000;
@@ -2477,8 +2477,7 @@ ponOculto(lsGet(LS_OCULTO) === "1");
 $("#btnOjo").addEventListener("click", () => { const on = !document.body.classList.contains("oculto"); lsSet(LS_OCULTO, on ? "1" : ""); ponOculto(on); });
 
 /* ------------------------------------------------------ código para entrar
-   Candado de este dispositivo: se pide al abrir la app y al regresar a ella
-   después de 30 segundos fuera. Se guarda solo un resumen cifrado del código. */
+   Candado de este dispositivo: se pide cada vez que abres la app o regresas a ella. Se guarda solo un resumen cifrado del código. */
 const LS_PIN = "billion_pin", LS_PIN_FALLOS = "billion_pin_fallos", PIN_FUERA_MS = 30000;
 const PIN = { modo: "", valor: "", primero: "", alTerminar: null, fueraDesde: 0, bloqueadoHasta: 0 };
 const pinGuardado = () => { try { return JSON.parse(lsGet(LS_PIN) || "null"); } catch (e) { return null; } };
@@ -2559,15 +2558,21 @@ $("#pinOlvido").addEventListener("submit", async e => {
     const fn = PIN.alTerminar; pinCerrar(); toast("Código quitado. Puedes poner uno nuevo en Ajustes."); if (fn) fn(true);
   } catch (err) { CLAVE = antes; pinError(err.auth ? "Esa no es la clave del Sheets." : conPista(err.message)); }
 });
-document.addEventListener("visibilitychange", () => {
+// Cada vez que sales de la app se bloquea al instante (así tampoco se ven tus números en "apps recientes")
+// y al volver te pide el código.
+function pinBloquear() {
   if (!pinGuardado()) return;
-  if (document.visibilityState === "hidden") PIN.fueraDesde = Date.now();
-  else if (PIN.fueraDesde && Date.now() - PIN.fueraDesde > PIN_FUERA_MS && !$("#candado").open) pinAbrir("entrar", () => cargar());
-});
+  if ($("#candado").open && PIN.modo === "entrar") return;
+  $$("dialog[open]").forEach(d => { if (d.id !== "candado" && d.id !== "claveDlg") cerrar(d); });
+  pinAbrir("entrar", () => cargar());
+}
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") pinBloquear(); });
+window.addEventListener("pagehide", pinBloquear);
+window.addEventListener("pageshow", e => { if (e.persisted) pinBloquear(); });
 function pinAjustes() {
   const g = pinGuardado();
   $("#ajPin").innerHTML = g
-    ? `<div class="estado-l"><span class="ico si">✓</span><span>Activado en este dispositivo (${g.n} números). Se pide al abrir y al regresar después de 30 segundos.</span></div>
+    ? `<div class="estado-l"><span class="ico si">✓</span><span>Activado en este dispositivo (${g.n} números). Se pide cada vez que abres o regresas a la app.</span></div>
        <p class="nota" style="margin-top:6px"><button class="link" data-pin="cambiar">Cambiar código</button> · <button class="link" data-pin="quitar">Quitarlo</button></p>`
     : `<div class="estado-l"><span class="ico no">!</span><span>Sin código: la app abre directo.</span></div>
        <p class="nota" style="margin-top:6px"><button class="btn sm" data-pin="crear">Poner código</button></p>`;
