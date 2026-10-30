@@ -1,6 +1,6 @@
 // Finanzas: permite instalar la app y abrirla aunque no haya señal.
 // Siempre intenta traer la versión más nueva; solo usa la copia guardada si no hay internet.
-const CACHE = 'finanzas-v2';
+const CACHE = 'finanzas-v3';
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(['./Finanzas.html', './manifest.webmanifest', './icono-192.png', './icono-512.png'])).catch(() => {}));
   self.skipWaiting();
