@@ -343,6 +343,10 @@ body.oculto main .chart svg, body.oculto main .card svg, body.oculto main .dist 
 .pin-olvido p{margin:0;line-height:1.5}
 .pin-olvido input{font:inherit;font-size:16px;padding:11px 12px;border-radius:10px;border:1px solid #333;background:#111;color:#fff}
 .pin-fila{display:flex;gap:8px;justify-content:flex-end}
+
+.version-pie{text-align:center;font-size:11.5px;color:var(--faint);margin:34px 0 0;font-family:var(--mono)}
+.aviso-version{white-space:nowrap;position:fixed;left:50%;top:calc(10px + env(safe-area-inset-top,0));transform:translateX(-50%);z-index:60;background:#fff;color:#000;border-radius:12px;padding:10px 14px;font-size:14px;display:flex;gap:12px;align-items:center;box-shadow:0 10px 30px rgba(0,0,0,.5);max-width:92vw}
+.aviso-version button{appearance:none;border:0;background:#000;color:#fff;border-radius:8px;padding:7px 12px;font:inherit;font-weight:600;cursor:pointer}
 </style>
 </head>
 <body>
@@ -511,6 +515,7 @@ body.oculto main .chart svg, body.oculto main .card svg, body.oculto main .dist 
   <p class="nota" id="zNota"></p>
 </section>
 
+<p class="version-pie" id="versionPie"></p>
 </main>
 
 <button class="fab" id="fab" aria-label="Registrar movimiento" title="Registrar movimiento">
@@ -564,7 +569,7 @@ body.oculto main .chart svg, body.oculto main .card svg, body.oculto main .dist 
 
 <dialog id="cfgDlg">
   <div class="dlg">
-    <div class="dlg-h"><h3>Ajustes</h3></div>
+    <div class="dlg-h"><h3>Ajustes</h3><p id="cfgVersion" class="mini"></p></div>
     <div class="dlg-b">
       <div class="aj-sec">
         <h4>Seguridad</h4>
@@ -1022,6 +1027,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Motor;
    Si la publicas en Netlify o la abres como archivo, puedes pegar aquí tu URL
    /exec para no configurarla en cada dispositivo. En Apps Script no hace falta.
    ========================================================================== */
+const APP_VERSION = "2026.10.30-2";
 const API_URL_FIJA = "";
 const LS_URL = "finanzas_api_url", LS_CLAVE = "finanzas_clave", LS_RANGO = "finanzas_rango", LS_VISTO = "finanzas_v4_visto";
 const TIMEOUT_MS = 60000;
@@ -2421,7 +2427,8 @@ function abrirAjustes(msg) {
   $("#cfgConBox").hidden = !web; $("#cfgOlvidar").hidden = !web || !lsGet(LS_URL); $("#cfgUrl").value = API_URL;
   $("#cfgErr").textContent = msg || "";
   const origen = location.protocol === "file:" ? "archivo local" : location.hostname;
-  $("#cfgDiag").innerHTML = `Modo: <b>${web ? "web" : "Apps Script"}</b> · origen: <code>${esc(origen)}</code>` + (web ? ` · URL guardada: ${API_URL ? "sí" : "<b class='neg'>no</b>"}` : "") + (m.version ? ` · versión ${esc(m.version)}` : "");
+  $("#cfgDiag").innerHTML = `Modo: <b>${web ? "web" : "Apps Script"}</b> · origen: <code>${esc(origen)}</code>` + (web ? ` · URL guardada: ${API_URL ? "sí" : "<b class='neg'>no</b>"}` : "") + (m.version ? ` · servidor v${esc(m.version)}` : "");
+  $("#cfgVersion").textContent = "BILLION versión " + APP_VERSION;
   abrir($("#cfgDlg"));
 }
 $("#cfgDlg").addEventListener("click", e => {
@@ -2574,6 +2581,32 @@ $("#cfgDlg").addEventListener("click", e => {
   if (k === "cambiar") pinAbrir("verificar", ok => ok ? pinAbrir("crear", vuelve) : vuelve());
   if (k === "quitar") pinAbrir("verificar", ok => { if (ok) { lsDel(LS_PIN); lsDel(LS_PIN_FALLOS); toast("Código quitado"); } vuelve(); });
 });
+
+/* ------------------------------------------------------ versión
+   Se ve al final de la página y en Ajustes. Si en GitHub hay una más nueva, avisa. */
+$("#versionPie").textContent = "BILLION · versión " + APP_VERSION;
+const esWeb = () => location.protocol === "https:" && !/googleusercontent|script\.google/.test(location.hostname);
+async function revisarVersion() {
+  if (!esWeb()) return;
+  try {
+    const r = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });
+    if (!r.ok) return;
+    const v = (await r.json()).version;
+    if (v && v !== APP_VERSION && !$(".aviso-version")) {
+      const d = document.createElement("div"); d.className = "aviso-version";
+      d.innerHTML = `<span>Hay una versión nueva</span><button type="button">Actualizar</button>`;
+      d.querySelector("button").addEventListener("click", actualizarApp);
+      document.body.appendChild(d);
+    }
+  } catch (e) {}
+}
+async function actualizarApp() {
+  try { const ks = await caches.keys(); await Promise.all(ks.map(k => caches.delete(k))); } catch (e) {}
+  try { const rs = await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map(r => r.update())); } catch (e) {}
+  location.replace(location.pathname + "?v=" + Date.now());
+}
+setTimeout(revisarVersion, 1500);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") revisarVersion(); });
 /* ---------------------------------------------------------- arranque */
 let CARGANDO = false;
 async function cargar(modo) {
@@ -2600,7 +2633,7 @@ setInterval(() => { if (CARGADO && UI.tab === "resumen") renderResumen(); }, 600
 
 try {
   if ("serviceWorker" in navigator && location.protocol === "https:" && !/googleusercontent|script\.google/.test(location.hostname))
-    navigator.serviceWorker.register("sw.js").catch(() => {});
+    navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).catch(() => {});
 } catch (e) {}
 function arrancar() { if (pinGuardado()) pinAbrir("entrar", () => cargar()); else cargar(); }
 if (document.readyState === "complete") setTimeout(arrancar, 0);
