@@ -317,6 +317,32 @@ body.oculto #detDlg .det-big, body.oculto #detDlg .lbl-s, body.oculto #detDlg .i
 body.oculto #regDlg .num { filter: blur(9px); user-select:none }
 body.oculto main svg text { opacity:0 }
 body.oculto main .chart svg, body.oculto main .card svg, body.oculto main .dist svg { filter: blur(3px) }
+
+/* ===== candado con código ===== */
+#candado{width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;margin:0;border-radius:0;background:#000;color:#fff;box-shadow:none;padding:0}
+#candado::backdrop{background:#000}
+.pin-caja{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px 16px calc(24px + env(safe-area-inset-bottom,0))}
+.pin-marca{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.08em;font-size:18px;margin-bottom:18px}
+.pin-marca img{width:34px;height:34px;border-radius:9px}
+.pin-titulo{font-size:16px;color:#cfcfcf}
+.pin-puntos{display:flex;gap:14px;height:18px;margin:6px 0}
+.pin-puntos i{width:14px;height:14px;border-radius:50%;border:2px solid #777;display:block}
+.pin-puntos i.on{background:#fff;border-color:#fff}
+.pin-puntos.mal{animation:sacude .35s}
+@keyframes sacude{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+.pin-err{min-height:20px;font-size:13px;color:var(--neg);text-align:center}
+.pin-teclado{display:grid;grid-template-columns:repeat(3,76px);gap:16px 26px;margin-top:4px}
+.pin-teclado button{width:76px;height:76px;border-radius:50%;border:0;background:#1c1c1c;color:#fff;font:500 28px var(--sans);cursor:pointer}
+.pin-teclado button:active{background:#333}
+.pin-teclado button:focus{outline:none}
+.pin-teclado button.pin-sec{background:none;font-size:14px;color:#aaa}
+.pin-teclado button#pinBorrar{font-size:24px}
+.pin-teclado button[hidden]{visibility:hidden;display:block}
+.pin-ok{margin-top:6px;min-width:180px;justify-content:center}
+.pin-olvido{width:min(340px,100%);display:flex;flex-direction:column;gap:12px;font-size:14px;color:#ccc}
+.pin-olvido p{margin:0;line-height:1.5}
+.pin-olvido input{font:inherit;font-size:16px;padding:11px 12px;border-radius:10px;border:1px solid #333;background:#111;color:#fff}
+.pin-fila{display:flex;gap:8px;justify-content:flex-end}
 </style>
 </head>
 <body>
@@ -545,6 +571,10 @@ body.oculto main .chart svg, body.oculto main .card svg, body.oculto main .dist 
         <div id="ajClave"></div>
       </div>
       <div class="aj-sec">
+        <h4>Código para entrar</h4>
+        <div id="ajPin"></div>
+      </div>
+      <div class="aj-sec">
         <h4>Precios automáticos</h4>
         <div id="ajDiario"></div>
         <p class="nota" style="margin-top:8px">¿Tu gráfica se ve plana antes de hoy? <button class="link" data-accion="historial">Traer historial de precios de tus criptos</button></p>
@@ -574,6 +604,28 @@ body.oculto main .chart svg, body.oculto main .card svg, body.oculto main .dist 
       <button type="button" class="btn" id="cfgCerrar">Cerrar</button>
       <button type="button" class="btn primary" id="cfgOk">Guardar</button>
     </div>
+  </div>
+</dialog>
+
+<dialog id="candado" aria-label="Código de acceso">
+  <div class="pin-caja">
+    <div class="pin-marca"><img id="pinLogo" alt=""><span>BILLION</span></div>
+    <div class="pin-titulo" id="pinTitulo">Escribe tu código</div>
+    <div class="pin-puntos" id="pinPuntos"></div>
+    <div class="pin-err" id="pinErr"></div>
+    <div class="pin-teclado" id="pinTeclado">
+      <button type="button" data-d="1">1</button><button type="button" data-d="2">2</button><button type="button" data-d="3">3</button>
+      <button type="button" data-d="4">4</button><button type="button" data-d="5">5</button><button type="button" data-d="6">6</button>
+      <button type="button" data-d="7">7</button><button type="button" data-d="8">8</button><button type="button" data-d="9">9</button>
+      <button type="button" class="pin-sec" id="pinIzq">Olvidé</button><button type="button" data-d="0">0</button>
+      <button type="button" class="pin-sec" id="pinBorrar" aria-label="Borrar">⌫</button>
+    </div>
+    <button type="button" class="btn primary pin-ok" id="pinOk" hidden>Continuar</button>
+    <form class="pin-olvido" id="pinOlvido" hidden novalidate>
+      <p>Para quitar el código escribe la <b>clave de acceso de tu Sheets</b> (la de Finanzas → Establecer clave).</p>
+      <input type="password" id="pinClave" autocomplete="current-password" placeholder="Clave del Sheets">
+      <div class="pin-fila"><button type="button" class="btn" id="pinOlvidoNo">Regresar</button><button type="submit" class="btn primary">Quitar código</button></div>
+    </form>
   </div>
 </dialog>
 
@@ -2347,6 +2399,7 @@ function diagnosticoUrl(u) {
 }
 function abrirAjustes(msg) {
   const m = META || {};
+  pinAjustes();
   $("#ajClave").innerHTML = m.claveActiva
     ? `<div class="estado-l"><span class="ico si">✓</span><span>Protegida con clave. Este dispositivo ya está autorizado.</span></div>
        <p class="nota" style="margin-top:6px">Para cambiarla: en el Sheets, menú Finanzas → Establecer clave de acceso. <button class="link" id="ajOlvidaClave">Cerrar sesión en este dispositivo</button></p>`
@@ -2415,6 +2468,112 @@ function ponOculto(on) {
 }
 ponOculto(lsGet(LS_OCULTO) === "1");
 $("#btnOjo").addEventListener("click", () => { const on = !document.body.classList.contains("oculto"); lsSet(LS_OCULTO, on ? "1" : ""); ponOculto(on); });
+
+/* ------------------------------------------------------ código para entrar
+   Candado de este dispositivo: se pide al abrir la app y al regresar a ella
+   después de 30 segundos fuera. Se guarda solo un resumen cifrado del código. */
+const LS_PIN = "billion_pin", LS_PIN_FALLOS = "billion_pin_fallos", PIN_FUERA_MS = 30000;
+const PIN = { modo: "", valor: "", primero: "", alTerminar: null, fueraDesde: 0, bloqueadoHasta: 0 };
+const pinGuardado = () => { try { return JSON.parse(lsGet(LS_PIN) || "null"); } catch (e) { return null; } };
+async function pinHash(sal, codigo) {
+  const txt = "billion:" + sal + ":" + codigo;
+  try {
+    const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(txt));
+    return Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2, "0")).join("");
+  } catch (e) { let x = 5381; for (const c of txt) x = ((x * 33) ^ c.charCodeAt(0)) >>> 0; return "d" + x.toString(16); }
+}
+function pinPinta() {
+  const g = pinGuardado(), largo = PIN.modo === "entrar" && g ? g.n : Math.max(4, PIN.valor.length);
+  $("#pinPuntos").innerHTML = Array.from({ length: largo }, (_, i) => `<i class="${i < PIN.valor.length ? "on" : ""}"></i>`).join("");
+  $("#pinOk").hidden = !(PIN.modo === "crear" || PIN.modo === "confirmar") || PIN.valor.length < 4;
+  $("#pinIzq").textContent = PIN.modo === "entrar" ? "Olvidé" : "Cancelar";
+}
+function pinError(msg) {
+  $("#pinErr").textContent = msg || "";
+  if (msg) { const p = $("#pinPuntos"); p.classList.remove("mal"); void p.offsetWidth; p.classList.add("mal"); }
+}
+function pinAbrir(modo, alTerminar) {
+  PIN.modo = modo; PIN.valor = ""; PIN.alTerminar = alTerminar || null;
+  if (modo === "crear") PIN.primero = "";
+  $("#pinTitulo").textContent = { entrar: "Escribe tu código", verificar: "Escribe tu código actual", crear: "Elige un código de 4 a 6 números", confirmar: "Escríbelo otra vez" }[modo];
+  $("#pinOlvido").hidden = true; $("#pinTeclado").hidden = false; pinError("");
+  const logo = $(".brand img"); if (logo) $("#pinLogo").src = logo.src;
+  pinPinta();
+  const d = $("#candado"); if (d.open) d.close(); abrir(d);
+  setTimeout(() => { if (document.activeElement && document.activeElement.closest && document.activeElement.closest("#pinTeclado")) document.activeElement.blur(); }, 0);
+}
+function pinCerrar() { cerrar($("#candado")); }
+async function pinRevisa() {
+  const g = pinGuardado(), ahora = Date.now();
+  if (PIN.modo === "entrar" || PIN.modo === "verificar") {
+    if (!g || PIN.valor.length < g.n) return;
+    if (ahora < PIN.bloqueadoHasta) { PIN.valor = ""; pinPinta(); return pinError(`Espera ${Math.ceil((PIN.bloqueadoHasta - ahora) / 1000)} segundos.`); }
+    if (await pinHash(g.s, PIN.valor) === g.h) {
+      lsDel(LS_PIN_FALLOS); const fn = PIN.alTerminar; pinCerrar(); if (fn) fn(true); return;
+    }
+    const f = (+lsGet(LS_PIN_FALLOS) || 0) + 1; lsSet(LS_PIN_FALLOS, String(f));
+    if (f % 5 === 0) PIN.bloqueadoHasta = ahora + 30000 * (f / 5);
+    PIN.valor = ""; pinPinta(); pinError(f % 5 === 0 ? "Demasiados intentos. Espera " + (30 * f / 5) + " segundos." : "Código incorrecto.");
+  }
+}
+async function pinOk() {
+  if (PIN.modo === "crear") { if (PIN.valor.length < 4) return; PIN.primero = PIN.valor; const fn = PIN.alTerminar; pinAbrir("confirmar", fn); return; }
+  if (PIN.modo === "confirmar") {
+    if (PIN.valor !== PIN.primero) { PIN.primero = ""; const fn = PIN.alTerminar; pinAbrir("crear", fn); return pinError("No coincidieron. Empieza otra vez."); }
+    const s = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    lsSet(LS_PIN, JSON.stringify({ s, h: await pinHash(s, PIN.valor), n: PIN.valor.length })); lsDel(LS_PIN_FALLOS);
+    const fn = PIN.alTerminar; pinCerrar(); toast("Código guardado. Te lo voy a pedir cada vez que entres."); if (fn) fn(true);
+  }
+}
+$("#pinTeclado").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.d !== undefined) {
+    const max = PIN.modo === "entrar" || PIN.modo === "verificar" ? (pinGuardado() || { n: 6 }).n : 6;
+    if (PIN.valor.length >= max) return;
+    PIN.valor += b.dataset.d; pinError(""); pinPinta(); pinRevisa(); return;
+  }
+  if (b.id === "pinBorrar") { PIN.valor = PIN.valor.slice(0, -1); pinPinta(); return; }
+  if (b.id === "pinIzq") {
+    if (PIN.modo === "entrar") { $("#pinTeclado").hidden = true; $("#pinOlvido").hidden = false; $("#pinClave").value = ""; pinError(""); setTimeout(() => $("#pinClave").focus(), 50); }
+    else { const fn = PIN.alTerminar; pinCerrar(); if (fn) fn(false); }
+  }
+});
+$("#pinOk").addEventListener("click", pinOk);
+$("#candado").addEventListener("cancel", e => { if (PIN.modo === "entrar") e.preventDefault(); });
+$("#pinOlvidoNo").addEventListener("click", () => { $("#pinOlvido").hidden = true; $("#pinTeclado").hidden = false; pinError(""); });
+$("#pinOlvido").addEventListener("submit", async e => {
+  e.preventDefault();
+  const c = $("#pinClave").value; if (!c) return pinError("Escribe la clave.");
+  pinError(""); const antes = CLAVE; CLAVE = c;
+  try {
+    const out = await server({ action: "all" });
+    if (!out.meta || !out.meta.claveActiva) { CLAVE = antes; return pinError("Tu Sheets no tiene clave. Para quitar el código borra los datos del sitio en Chrome."); }
+    lsSet(LS_CLAVE, c); lsDel(LS_PIN); lsDel(LS_PIN_FALLOS);
+    const fn = PIN.alTerminar; pinCerrar(); toast("Código quitado. Puedes poner uno nuevo en Ajustes."); if (fn) fn(true);
+  } catch (err) { CLAVE = antes; pinError(err.auth ? "Esa no es la clave del Sheets." : conPista(err.message)); }
+});
+document.addEventListener("visibilitychange", () => {
+  if (!pinGuardado()) return;
+  if (document.visibilityState === "hidden") PIN.fueraDesde = Date.now();
+  else if (PIN.fueraDesde && Date.now() - PIN.fueraDesde > PIN_FUERA_MS && !$("#candado").open) pinAbrir("entrar", () => cargar());
+});
+function pinAjustes() {
+  const g = pinGuardado();
+  $("#ajPin").innerHTML = g
+    ? `<div class="estado-l"><span class="ico si">✓</span><span>Activado en este dispositivo (${g.n} números). Se pide al abrir y al regresar después de 30 segundos.</span></div>
+       <p class="nota" style="margin-top:6px"><button class="link" data-pin="cambiar">Cambiar código</button> · <button class="link" data-pin="quitar">Quitarlo</button></p>`
+    : `<div class="estado-l"><span class="ico no">!</span><span>Sin código: la app abre directo.</span></div>
+       <p class="nota" style="margin-top:6px"><button class="btn sm" data-pin="crear">Poner código</button></p>`;
+}
+$("#cfgDlg").addEventListener("click", e => {
+  const b = e.target.closest("[data-pin]"); if (!b) return;
+  const k = b.dataset.pin;
+  cerrar($("#cfgDlg"));
+  const vuelve = () => setTimeout(() => abrirAjustes(), 50);
+  if (k === "crear") pinAbrir("crear", vuelve);
+  if (k === "cambiar") pinAbrir("verificar", ok => ok ? pinAbrir("crear", vuelve) : vuelve());
+  if (k === "quitar") pinAbrir("verificar", ok => { if (ok) { lsDel(LS_PIN); lsDel(LS_PIN_FALLOS); toast("Código quitado"); } vuelve(); });
+});
 /* ---------------------------------------------------------- arranque */
 let CARGANDO = false;
 async function cargar(modo) {
@@ -2443,8 +2602,9 @@ try {
   if ("serviceWorker" in navigator && location.protocol === "https:" && !/googleusercontent|script\.google/.test(location.hostname))
     navigator.serviceWorker.register("sw.js").catch(() => {});
 } catch (e) {}
-if (document.readyState === "complete") setTimeout(cargar, 0);
-else window.addEventListener("load", () => cargar());
+function arrancar() { if (pinGuardado()) pinAbrir("entrar", () => cargar()); else cargar(); }
+if (document.readyState === "complete") setTimeout(arrancar, 0);
+else window.addEventListener("load", () => arrancar());
 
 </script>
 </body>
